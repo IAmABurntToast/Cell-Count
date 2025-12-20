@@ -1,0 +1,6 @@
+streamlit
+pandas
+numpy
+cellpose
+matplotlib
+opencv-python-headless
