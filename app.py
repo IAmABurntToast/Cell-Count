@@ -16,8 +16,20 @@ st.write("Upload TIF images or specify a folder to count colonies using Cellpose
 st.sidebar.header("Configuration")
 mode = st.sidebar.radio("Input Source", ["Upload Images", "Local Folder Path"])
 
+import uuid
+
+# ...
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+# Unique directories per session/run
+base_temp = Path("temp_data")
+base_temp.mkdir(exist_ok=True)
+
+# We'll create specific run dirs dynamically, 
+# but initialized to None here
 target_dir = None
-result_dir = Path("temp_results")
+result_dir = None
 run_clicked = False
 
 if mode == "Upload Images":
@@ -29,14 +41,12 @@ if mode == "Upload Images":
     )
     
     if uploaded_files:
-        # Create temp directory
-        temp_dir = Path("temp_analysis")
-        # Cleanup previous run if exists? 
-        # Better: keep it unless re-uploading? 
-        # For simplicity, recreate on each run or logic.
+        # Create unique temp directory for this upload batch
+        batch_id = str(uuid.uuid4())[:8]
+        temp_dir = base_temp / f"upload_{st.session_state.session_id}_{batch_id}"
         if temp_dir.exists():
-            shutil.rmtree(temp_dir)
-        temp_dir.mkdir()
+             shutil.rmtree(temp_dir)
+        temp_dir.mkdir(parents=True, exist_ok=True)
         
         # Save files
         for uploaded_file in uploaded_files:
@@ -118,11 +128,10 @@ if "result_dir" not in st.session_state:
 
 # ... (Previous code remains, but we need to update state on successful run)
 
-if run_clicked and target_dir:
-    # Reset Logic: Clear temp folder
-    if result_dir.exists():
-        shutil.rmtree(result_dir)
-    result_dir.mkdir()
+    # Use unique result dir
+    run_id = str(uuid.uuid4())[:8]
+    result_dir = base_temp / f"results_{st.session_state.session_id}_{run_id}"
+    result_dir.mkdir(parents=True, exist_ok=True)
     
     st.session_state.result_dir = result_dir 
     st.divider()
@@ -140,7 +149,15 @@ if run_clicked and target_dir:
     logs_expander = st.expander("Show Logs", expanded=True)
     log_area = logs_expander.empty()
     
-    cmd = [sys.executable, str(script_path), str(target_dir), str(result_dir)]
+    # Use the specific cellpose environment python executable if it exists (Local Mac),
+    # otherwise default to the current system python (Streamlit Cloud/GitHub)
+    local_cellpose_python = Path("/opt/anaconda3/envs/cellpose/bin/python")
+    if local_cellpose_python.exists():
+        cellpose_python = str(local_cellpose_python)
+    else:
+        cellpose_python = sys.executable
+
+    cmd = [cellpose_python, str(script_path), str(target_dir), str(result_dir)]
     
     try:
         process = subprocess.Popen(
