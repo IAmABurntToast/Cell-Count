@@ -128,6 +128,8 @@ if "result_dir" not in st.session_state:
 
 # ... (Previous code remains, but we need to update state on successful run)
 
+# Start Analysis
+if run_clicked and target_dir:
     # Use unique result dir
     run_id = str(uuid.uuid4())[:8]
     result_dir = base_temp / f"results_{st.session_state.session_id}_{run_id}"
