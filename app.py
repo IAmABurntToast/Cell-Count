@@ -138,7 +138,9 @@ if "result_dir" not in st.session_state:
     st.write(f"**Running analysis on:** `{target_dir}`")
     
     # ... (Analysis setup code) ...
-    script_path = Path("cfu_count.py").absolute()
+    # CRITICAL: Resolve cfu_count.py relative to THIS file (app.py), 
+    # not the current working directory.
+    script_path = (Path(__file__).parent / "cfu_count.py").absolute()
     if not script_path.exists():
         st.error(f"cfu_count.py not found at {script_path}!")
         st.stop()
