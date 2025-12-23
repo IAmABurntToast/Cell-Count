@@ -50,9 +50,9 @@ def main():
         if p.suffix.lower() in IMAGE_EXTS and not p.name.startswith(".")
     )
 
-    print(f"Found {len(images)} images in {folder}")
+    print(f"Found {len(images)} images in {folder}", flush=True)
     for i, img in enumerate(images):
-        print(f"  [{i+1}] {img.name}")
+        print(f"  [{i+1}] {img.name}", flush=True)
     
     if not images:
         return
@@ -60,7 +60,7 @@ def main():
     # subfolder for visualization outputs
     visuals_dir = output_dir / "cp_visuals"
     visuals_dir.mkdir(exist_ok=True)
-    print(f"Saving overlay images to: {visuals_dir}")
+    print(f"Saving overlay images to: {visuals_dir}", flush=True)
 
     import torch
     
@@ -92,66 +92,57 @@ def main():
         for img_path in images:
             stem = img_path.stem
 
-            print(f"\nProcessing {img_path.name} ...")
-            img = io.imread(str(img_path))
+            try:
+                print(f"\nProcessing {img_path.name} ...", flush=True)
+                img = io.imread(str(img_path))
 
-            # ---- segmentation with upscaling for tiny colonies ----
-            # rescale=2.0 upsamples the image before segmentation so
-            # small colonies (5–10 px) become ~10–20 px in the model’s view.
-            masks, flows, styles = model.eval(
-                img,
-                channels=[0, 0],
-                diameter=None,   # keep diameter auto
-                rescale=2.0,     # <- tweak this (e.g. 1.5–3.0) if needed
-            )
+                # ---- segmentation with upscaling for tiny colonies ----
+                # rescale=2.0 upsamples the image before segmentation so
+                # small colonies (5–10 px) become ~10–20 px in the model’s view.
+                masks, flows, styles = model.eval(
+                    img,
+                    channels=[0, 0],
+                    diameter=None,   # keep diameter auto
+                    rescale=2.0,     # <- tweak this (e.g. 1.5–3.0) if needed
+                )
 
-            pred = int(masks.max())  # 0 = background, 1..N = colonies
-            print(f"  -> predicted {pred} colonies")
+                pred = int(masks.max())  # 0 = background, 1..N = colonies
+                print(f"  -> predicted {pred} colonies", flush=True)
 
-            # --------- save raw mask (label image, mainly for data use) ----------
-            # --------- save raw mask (label image, mainly for data use) ----------
-            # io.save_masks(
-            #     [img],
-            #     [masks],
-            #     [flows],
-            #     [str(img_path)],
-            #     png=True,          # writes *_cp_masks.png
-            #     tif=False,
-            #     channels=[0, 0],
-            #     savedir=str(visuals_dir),
-            #     save_flows=False,
-            #     save_outlines=False,
-            #     save_txt=False,
-            #     save_mpl=False,
-            # )
+                # --------- save raw mask (label image, mainly for data use) ----------
+                # io.save_masks(...)
 
-            # --------- overlay: original plate + colored colonies ----------
-            fig, ax = plt.subplots(figsize=(5, 5))
+                # --------- overlay: original plate + colored colonies ----------
+                fig, ax = plt.subplots(figsize=(5, 5))
 
-            # show original image in gray/RGB
-            if img.ndim == 2:          # grayscale
-                ax.imshow(img, cmap="gray")
-            else:                       # RGB
-                ax.imshow(img)
+                # show original image in gray/RGB
+                if img.ndim == 2:          # grayscale
+                    ax.imshow(img, cmap="gray")
+                else:                       # RGB
+                    ax.imshow(img)
 
-            # show masks as colored blobs with transparency
-            masked_labels = np.ma.masked_where(masks == 0, masks)
-            ax.imshow(masked_labels, alpha=0.5, cmap="tab20")
-            ax.axis("off")
+                # show masks as colored blobs with transparency
+                masked_labels = np.ma.masked_where(masks == 0, masks)
+                ax.imshow(masked_labels, alpha=0.5, cmap="tab20")
+                ax.axis("off")
 
-            overlay_path = visuals_dir / f"{stem}_overlay.png"
-            fig.savefig(overlay_path, dpi=200, bbox_inches="tight")
-            plt.close(fig)
-            print(f"  saved overlay: {overlay_path.name}")
+                overlay_path = visuals_dir / f"{stem}_overlay.png"
+                fig.savefig(overlay_path, dpi=200, bbox_inches="tight")
+                plt.close(fig)
+                print(f"  saved overlay: {overlay_path.name}", flush=True)
 
-            writer.writerow(
-                [
-                    stem,
-                    pred,
-                ]
-            )
+                writer.writerow(
+                    [
+                        stem,
+                        pred,
+                    ]
+                )
+            except Exception as e:
+                print(f"ERROR processing {img_path.name}: {e}", flush=True)
+                # Optionally continue or log specifically
+                continue
 
-    print(f"\nDone. Wrote {out_path}")
+    print(f"\nDone. Wrote {out_path}", flush=True)
     print(f"Overlay + mask images saved in: {visuals_dir}")
 
 
