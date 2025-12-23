@@ -73,7 +73,8 @@ def main():
         use_gpu = True
         print("GPU detected (MPS/Mac).")
     else:
-        print("No GPU detected. Using CPU.")
+        print("No GPU detected. Using CPU.", flush=True)
+        print("WARNING: Processing on CPU will be slow for large images!", flush=True)
 
     # load CPSAM model (same as 'run CPSAM' button)
     print(f"Loading CPSAM model (gpu={use_gpu})...")
@@ -96,14 +97,15 @@ def main():
                 print(f"\nProcessing {img_path.name} ...", flush=True)
                 img = io.imread(str(img_path))
 
-                # ---- segmentation with upscaling for tiny colonies ----
-                # rescale=2.0 upsamples the image before segmentation so
-                # small colonies (5–10 px) become ~10–20 px in the model’s view.
+                # rescale=0.5 downsamples image by half (1/4 area).
+                # Critical for Streamlit Cloud (CPU only, low RAM) to prevent OOM/Timeouts.
+                print(f"  Shape before processing: {img.shape}", flush=True)
+                
                 masks, flows, styles = model.eval(
                     img,
                     channels=[0, 0],
-                    diameter=None,   # keep diameter auto
-                    rescale=2.0,     # <- tweak this (e.g. 1.5–3.0) if needed
+                    diameter=None,   
+                    rescale=0.5,     # <- CHANGED: downscale for Cloud stability
                 )
 
                 pred = int(masks.max())  # 0 = background, 1..N = colonies
